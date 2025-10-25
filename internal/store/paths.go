@@ -6,26 +6,26 @@ import (
 	"runtime"
 )
 
-// GetDataDir returns the platform-specific data directory for godo
+// GetDataDir returns the platform-specific data directory for godoit
 func GetDataDir() (string, error) {
 	var baseDir string
 
 	switch runtime.GOOS {
 	case "windows":
-		// Windows: %APPDATA%/godo
+		// Windows: %APPDATA%/godoit
 		baseDir = os.Getenv("APPDATA")
 		if baseDir == "" {
 			baseDir = os.Getenv("USERPROFILE")
 		}
 	case "darwin":
-		// macOS: ~/Library/Application Support/godo
+		// macOS: ~/Library/Application Support/godoit
 		homeDir, err := os.UserHomeDir()
 		if err != nil {
 			return "", err
 		}
 		baseDir = filepath.Join(homeDir, "Library", "Application Support")
 	default:
-		// Linux and others: ~/.local/share/godo
+		// Linux and others: ~/.local/share/godoit
 		baseDir = os.Getenv("XDG_DATA_HOME")
 		if baseDir == "" {
 			homeDir, err := os.UserHomeDir()
@@ -36,7 +36,7 @@ func GetDataDir() (string, error) {
 		}
 	}
 
-	dataDir := filepath.Join(baseDir, "godo")
+	dataDir := filepath.Join(baseDir, "godoit")
 
 	// Ensure the directory exists
 	if err := os.MkdirAll(dataDir, 0755); err != nil {
@@ -46,26 +46,26 @@ func GetDataDir() (string, error) {
 	return dataDir, nil
 }
 
-// GetConfigDir returns the platform-specific config directory for godo
+// GetConfigDir returns the platform-specific config directory for godoit
 func GetConfigDir() (string, error) {
 	var baseDir string
 
 	switch runtime.GOOS {
 	case "windows":
-		// Windows: %APPDATA%/godo
+		// Windows: %APPDATA%/godoit
 		baseDir = os.Getenv("APPDATA")
 		if baseDir == "" {
 			baseDir = os.Getenv("USERPROFILE")
 		}
 	case "darwin":
-		// macOS: ~/Library/Application Support/godo
+		// macOS: ~/Library/Application Support/godoit
 		homeDir, err := os.UserHomeDir()
 		if err != nil {
 			return "", err
 		}
 		baseDir = filepath.Join(homeDir, "Library", "Application Support")
 	default:
-		// Linux and others: ~/.config/godo
+		// Linux and others: ~/.config/godoit
 		baseDir = os.Getenv("XDG_CONFIG_HOME")
 		if baseDir == "" {
 			homeDir, err := os.UserHomeDir()
@@ -76,7 +76,7 @@ func GetConfigDir() (string, error) {
 		}
 	}
 
-	configDir := filepath.Join(baseDir, "godo")
+	configDir := filepath.Join(baseDir, "godoit")
 
 	// Ensure the directory exists
 	if err := os.MkdirAll(configDir, 0755); err != nil {

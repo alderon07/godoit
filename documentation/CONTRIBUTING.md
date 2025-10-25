@@ -1,6 +1,6 @@
-# Contributing to godo
+# Contributing to godoit
 
-Thank you for your interest in contributing to godo! This document provides guidelines and instructions for contributing.
+Thank you for your interest in contributing to godoit! This document provides guidelines and instructions for contributing.
 
 ## Code of Conduct
 
@@ -21,8 +21,8 @@ Thank you for your interest in contributing to godo! This document provides guid
 1. Fork the repository
 2. Clone your fork:
    ```bash
-   git clone https://github.com/yourusername/godo.git
-   cd godo
+   git clone https://github.com/yourusername/godoit.git
+   cd godoit
    ```
 3. Install dependencies:
    ```bash
@@ -205,7 +205,7 @@ func TestTaskHasTag(t *testing.T) {
 ## Project Structure
 
 ```
-godo/
+godoit/
 ├── cmd/todo/           # Main application
 ├── internal/           # Internal packages
 │   ├── core/          # Core logic
@@ -245,7 +245,7 @@ When reporting bugs, please include:
 5. **Environment**:
    - OS and version
    - Go version
-   - godo version
+   - godoit version
 6. **Logs/Error messages**: Any relevant output
 
 Example:
@@ -257,8 +257,8 @@ Task completion fails with recurring tasks
 
 ## Steps to Reproduce
 
-1. Create a recurring task: `godo add -title "Test" -repeat daily`
-2. Mark it as done: `godo done 1`
+1. Create a recurring task: `godoit add -title "Test" -repeat daily`
+2. Mark it as done: `godoit done 1`
 3. Error occurs
 
 ## Expected Behavior
@@ -273,7 +273,7 @@ Error: "cannot create recurring task"
 
 - OS: Ubuntu 22.04
 - Go: 1.25
-- godo: v1.0.0
+- godoit: v1.0.0
 ```
 
 ## Pull Request Guidelines
@@ -352,4 +352,4 @@ Contributors will be recognized in:
 - Release notes
 - Project README
 
-Thank you for contributing to godo! 🎉
+Thank you for contributing to godoit! 🎉

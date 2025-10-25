@@ -58,7 +58,7 @@ func (n *SystemNotifier) Send(title, message string) error {
 			$xml = New-Object Windows.Data.Xml.Dom.XmlDocument
 			$xml.LoadXml($template)
 			$toast = New-Object Windows.UI.Notifications.ToastNotification $xml
-			[Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier("godo").Show($toast)
+			[Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier("godoit").Show($toast)
 		`, title, message)
 		cmd = exec.Command("powershell", "-Command", script)
 

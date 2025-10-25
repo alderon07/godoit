@@ -1,7 +1,7 @@
 .PHONY: help build run test clean install fmt vet lint all
 
 # Binary name
-BINARY_NAME=godo
+BINARY_NAME=godoit
 OUTPUT_DIR=bin
 
 # Version info (can be overridden)

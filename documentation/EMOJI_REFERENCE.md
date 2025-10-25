@@ -1,6 +1,6 @@
 # Emoji Reference Guide
 
-This document defines the standard emojis used throughout the godo project for consistency.
+This document defines the standard emojis used throughout the godoit project for consistency.
 
 ## Task List Display Emojis
 

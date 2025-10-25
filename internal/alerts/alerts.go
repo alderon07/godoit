@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"godo/internal/core"
-	"godo/internal/notifications"
+	"godoit/internal/core"
+	"godoit/internal/notifications"
 )
 
 // AlertType represents the type of alert

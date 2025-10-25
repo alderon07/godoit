@@ -21,7 +21,7 @@ A feature-rich, cross-platform command-line TODO list manager written in Go with
 
 ### Download Pre-built Binaries
 
-Download the latest release for your platform from the [releases page](https://github.com/yourusername/godo/releases).
+Download the latest release for your platform from the [releases page](https://github.com/yourusername/godoit/releases).
 
 Available platforms:
 
@@ -35,8 +35,8 @@ Requires Go 1.25 or higher.
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/godo.git
-cd godo
+git clone https://github.com/yourusername/godoit.git
+cd godoit
 
 # Build
 make build
@@ -45,7 +45,7 @@ make build
 make build-all
 ```
 
-The binary will be available at `bin/godo`.
+The binary will be available at `bin/godoit`.
 
 ### Install to System
 
@@ -53,20 +53,20 @@ The binary will be available at `bin/godo`.
 make install
 ```
 
-This installs the binary to `$GOPATH/bin/godo`.
+This installs the binary to `$GOPATH/bin/godoit`.
 
 ## Usage
 
 ### Basic Commands
 
 ```bash
-godo <command> [options]
+godoit <command> [options]
 ```
 
 ### Add a Task
 
 ```bash
-godo add -title "Task description" [options]
+godoit add -title "Task description" [options]
 ```
 
 **Options:**
@@ -83,25 +83,25 @@ godo add -title "Task description" [options]
 
 ```bash
 # Simple task
-godo add -title "Buy groceries"
+godoit add -title "Buy groceries"
 
 # Task with description and priority
-godo add -title "Review pull requests" -desc "Check and merge all pending PRs" -due 2025-10-25 -p 3
+godoit add -title "Review pull requests" -desc "Check and merge all pending PRs" -due 2025-10-25 -p 3
 
 # Task with tags
-godo add -title "Team meeting" -desc "Weekly sync with the team" -tags "work,meeting" -p 2
+godoit add -title "Team meeting" -desc "Weekly sync with the team" -tags "work,meeting" -p 2
 
 # Recurring task
-godo add -title "Weekly report" -desc "Submit weekly progress report" -repeat weekly -due 2025-10-27
+godoit add -title "Weekly report" -desc "Submit weekly progress report" -repeat weekly -due 2025-10-27
 
 # Task with dependencies (can't start until tasks 1 and 2 are done)
-godo add -title "Deploy to production" -desc "Deploy latest build to prod environment" -after "1,2" -p 3
+godoit add -title "Deploy to production" -desc "Deploy latest build to prod environment" -after "1,2" -p 3
 ```
 
 ### List Tasks
 
 ```bash
-godo list [options]
+godoit list [options]
 ```
 
 **Options:**
@@ -122,37 +122,37 @@ godo list [options]
 
 ```bash
 # List all pending tasks
-godo list
+godoit list
 
 # Show detailed information (includes descriptions)
-godo list -detailed
+godoit list -detailed
 
 # Show only today's tasks
-godo list -today
+godoit list -today
 
 # Show this week's tasks with details
-godo list -week -detailed
+godoit list -week -detailed
 
 # Show all tasks including completed
-godo list -all
+godoit list -all
 
 # Filter by tag (OR logic)
-godo list -tags "work,urgent"
+godoit list -tags "work,urgent"
 
 # Filter by tag (AND logic - must have both tags)
-godo list -tags "work+urgent"
+godoit list -tags "work+urgent"
 
 # Search tasks
-godo list -grep "meeting"
+godoit list -grep "meeting"
 
 # Sort by priority
-godo list -sort priority
+godoit list -sort priority
 
 # Show tasks due in the next week
-godo list -before 2025-10-31
+godoit list -before 2025-10-31
 
 # Combine filters
-godo list -tags "work" -sort priority -grep "review" -detailed
+godoit list -tags "work" -sort priority -grep "review" -detailed
 ```
 
 ### Understanding Task Display
@@ -200,7 +200,7 @@ The list view uses visual indicators (emojis) to make information easy to scan:
 ### Mark Task as Done
 
 ```bash
-godo done <index>
+godoit done <index>
 ```
 
 The index is shown in the list command. If the task is recurring, a new occurrence will be automatically created based on the repeat rule.
@@ -208,13 +208,13 @@ The index is shown in the list command. If the task is recurring, a new occurren
 **Example:**
 
 ```bash
-godo done 3
+godoit done 3
 ```
 
 ### Edit a Task
 
 ```bash
-godo edit <index> [options]
+godoit edit <index> [options]
 ```
 
 **Options:**
@@ -231,36 +231,36 @@ godo edit <index> [options]
 
 ```bash
 # Change title
-godo edit 2 -title "Updated task name"
+godoit edit 2 -title "Updated task name"
 
 # Update description
-godo edit 2 -desc "Updated description with more details"
+godoit edit 2 -desc "Updated description with more details"
 
 # Update due date and priority
-godo edit 1 -due 2025-11-01 -p 3
+godoit edit 1 -due 2025-11-01 -p 3
 
 # Remove due date
-godo edit 1 -due none
+godoit edit 1 -due none
 
 # Remove description
-godo edit 2 -desc none
+godoit edit 2 -desc none
 
 # Add tags
-godo edit 3 -tags "important,urgent"
+godoit edit 3 -tags "important,urgent"
 ```
 
 ### Remove a Task
 
 ```bash
-godo remove <index>
+godoit remove <index>
 # or
-godo rm <index>
+godoit rm <index>
 ```
 
 **Example:**
 
 ```bash
-godo rm 3
+godoit rm 3
 ```
 
 ### View Alerts
@@ -268,7 +268,7 @@ godo rm 3
 Show due/overdue tasks and blocked tasks (tasks waiting on dependencies):
 
 ```bash
-godo alerts [options]
+godoit alerts [options]
 ```
 
 **Options:**
@@ -281,19 +281,19 @@ godo alerts [options]
 
 ```bash
 # One-time scan
-godo alerts
+godoit alerts
 
 # Watch mode with desktop notifications
-godo alerts -watch
+godoit alerts -watch
 
 # Custom intervals
-godo alerts -watch -interval 5m -ahead 48h
+godoit alerts -watch -interval 5m -ahead 48h
 ```
 
 ### View Statistics
 
 ```bash
-godo stats
+godoit stats
 ```
 
 Shows:
@@ -310,7 +310,7 @@ Shows:
 Start an HTTP REST API server:
 
 ```bash
-godo server [options]
+godoit server [options]
 ```
 
 **Options:**
@@ -321,7 +321,7 @@ godo server [options]
 **Example:**
 
 ```bash
-godo server -port 8080
+godoit server -port 8080
 ```
 
 ## HTTP API Reference
@@ -425,7 +425,7 @@ curl http://localhost:8080/stats
 ## Project Structure
 
 ```
-godo/
+godoit/
 ├── cmd/
 │   └── todo/
 │       ├── main.go         # CLI entry point
@@ -465,9 +465,9 @@ godo/
 
 Tasks are stored in JSON format in platform-specific directories:
 
-- **Linux**: `~/.local/share/godo/tasks.json`
-- **macOS**: `~/Library/Application Support/godo/tasks.json`
-- **Windows**: `%APPDATA%/godo/tasks.json`
+- **Linux**: `~/.local/share/godoit/tasks.json`
+- **macOS**: `~/Library/Application Support/godoit/tasks.json`
+- **Windows**: `%APPDATA%/godoit/tasks.json`
 
 Storage uses atomic writes to prevent data corruption.
 
@@ -567,7 +567,7 @@ Tasks can depend on other tasks using the `-after` flag:
 
 ```bash
 # Task 3 depends on tasks 1 and 2
-godo add -title "Task 3" -after "1,2"
+godoit add -title "Task 3" -after "1,2"
 ```
 
 Benefits:
@@ -597,33 +597,33 @@ git push origin v1.0.0
 
 ```bash
 # Add daily tasks with descriptions
-godo add -title "Morning exercise" -desc "30 min cardio workout" -repeat daily -p 2
-godo add -title "Review emails" -desc "Check and respond to important emails" -tags "work" -p 1
+godoit add -title "Morning exercise" -desc "30 min cardio workout" -repeat daily -p 2
+godoit add -title "Review emails" -desc "Check and respond to important emails" -tags "work" -p 1
 
 # Add project tasks with dependencies
-godo add -title "Design API" -desc "Create API specification and design documents" -p 3 -tags "project,backend"
-godo add -title "Implement API" -desc "Develop API endpoints and business logic" -after "1" -p 3 -tags "project,backend"
-godo add -title "Write tests" -desc "Create unit and integration tests" -after "2" -p 2 -tags "project,backend"
-godo add -title "Deploy" -desc "Deploy to production environment" -after "2,3" -p 3 -tags "project,ops"
+godoit add -title "Design API" -desc "Create API specification and design documents" -p 3 -tags "project,backend"
+godoit add -title "Implement API" -desc "Develop API endpoints and business logic" -after "1" -p 3 -tags "project,backend"
+godoit add -title "Write tests" -desc "Create unit and integration tests" -after "2" -p 2 -tags "project,backend"
+godoit add -title "Deploy" -desc "Deploy to production environment" -after "2,3" -p 3 -tags "project,ops"
 
 # View today's tasks
-godo list -today -detailed
+godoit list -today -detailed
 
 # View this week's work tasks
-godo list -week -tags "work" -sort priority
+godoit list -week -tags "work" -sort priority
 
 # View work tasks sorted by priority with details
-godo list -tags "work" -sort priority -detailed
+godoit list -tags "work" -sort priority -detailed
 
 # Monitor for upcoming deadlines
-godo alerts -watch -ahead 48h
+godoit alerts -watch -ahead 48h
 ```
 
 ### Team Workflow
 
 ```bash
 # Start API server for team access
-godo server -host 0.0.0.0 -port 8080
+godoit server -host 0.0.0.0 -port 8080
 
 # Team members can use HTTP API
 curl http://team-server:8080/tasks
@@ -661,9 +661,9 @@ sudo apt install libnotify-bin
 
 To find where your tasks are stored:
 
-- Linux: `~/.local/share/godo/tasks.json`
-- macOS: `~/Library/Application Support/godo/tasks.json`
-- Windows: `%APPDATA%/godo/tasks.json`
+- Linux: `~/.local/share/godoit/tasks.json`
+- macOS: `~/Library/Application Support/godoit/tasks.json`
+- Windows: `%APPDATA%/godoit/tasks.json`
 
 You can manually edit or backup this file if needed.
 

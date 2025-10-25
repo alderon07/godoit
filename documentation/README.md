@@ -1,11 +1,11 @@
 # Documentation
 
-This folder contains all documentation for the godo project.
+This folder contains all documentation for the godoit project.
 
 ## Available Documentation
 
 - **[QUICK_START.md](QUICK_START.md)** - Quick command reference and common workflows  
-  Start here for a rapid introduction to godo commands and usage patterns.
+  Start here for a rapid introduction to godoit commands and usage patterns.
 
 - **[API.md](API.md)** - Complete HTTP REST API documentation  
   Full reference for the HTTP server endpoints with request/response examples.

@@ -12,8 +12,8 @@ import (
 	"strings"
 	"time"
 
-	"godo/internal/core"
-	"godo/internal/store"
+	"godoit/internal/core"
+	"godoit/internal/store"
 )
 
 // Server represents the HTTP API server

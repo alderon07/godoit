@@ -1,8 +1,8 @@
-# godo HTTP API Documentation
+# godoit HTTP API Documentation
 
 ## Overview
 
-The godo HTTP API provides a RESTful interface for managing tasks. All endpoints return JSON responses.
+The godoit HTTP API provides a RESTful interface for managing tasks. All endpoints return JSON responses.
 
 ## Base URL
 
