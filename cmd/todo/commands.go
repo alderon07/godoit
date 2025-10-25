@@ -1,15 +1,19 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"strings"
 	"time"
 
 	"godoit/internal/alerts"
+	"godoit/internal/clock"
 	"godoit/internal/core"
 	"godoit/internal/notifications"
+	"godoit/internal/repository"
 	"godoit/internal/server"
+	"godoit/internal/service"
 	"godoit/internal/store"
 )
 
@@ -33,15 +37,17 @@ func getStore() *store.JSONStore {
   return s
 }
 
+func getService() *service.TaskService {
+  s := getStore()
+  repo := repository.NewJSONTaskRepository(s)
+  return service.NewTaskService(repo, clock.SystemClock{})
+}
+
 // RunAdd adds a new task
 func RunAdd(title, description string, dueStr, repeat string, priority int, tags, after string) {
   if title == "" {
     log.Fatal("Error: -title is required")
   }
-
-  s := getStore()
-  tasks, err := store.LoadTasks[core.Task](s)
-  must(err)
 
   var due *time.Time
   if dueStr != "" {
@@ -52,39 +58,23 @@ func RunAdd(title, description string, dueStr, repeat string, priority int, tags
     }
   }
 
-  tasks = core.Add(tasks, title, due)
-  i := len(tasks) - 1
-
-  // Set description
-  tasks[i].Description = description
-
-  // Set priority
-  if priority < 1 || priority > 3 {
-    priority = 1
-  }
-  tasks[i].Priority = priority
-
-  // Set repeat
-  if repeat != "" {
-    tasks[i].Repeat = repeat
-  }
-
-  // Set tags
-  tasks[i].Tags = core.ParseTags(tags)
-
-  // Set dependencies
-  tasks[i].DependsOn = core.ParseIDs(after)
-
-  must(store.SaveTasks(s, tasks))
-  fmt.Printf("Added: %s (ID: %d)\n", title, tasks[i].ID)
+  svc := getService()
+  created, err := svc.AddTask(context.Background(), service.AddTaskInput{
+    Title:       title,
+    Description: description,
+    Due:         due,
+    Priority:    priority,
+    Tags:        core.ParseTags(tags),
+    Repeat:      repeat,
+    DependsOn:   core.ParseIDs(after),
+  })
+  must(err)
+  fmt.Printf("Added: %s (ID: %d)\n", created.Title, created.ID)
 }
 
 // RunList lists tasks with optional filters
 func RunList(showAll, today, week, detailed bool, grep, tags, sortKey, before, after string) {
-  s := getStore()
-  tasks, err := store.LoadTasks[core.Task](s)
-  must(err)
-
+  svc := getService()
   now := time.Now()
 
   // Apply time-based filters
@@ -104,9 +94,23 @@ func RunList(showAll, today, week, detailed bool, grep, tags, sortKey, before, a
     after = startOfWeek.Format("2006-01-02")
   }
 
-  visible := core.SortedWith(tasks, showAll, grep, sortKey)
-  visible = core.FilterByTags(visible, tags)
-  visible = core.FilterByDate(visible, before, after)
+  var beforePtr, afterPtr *time.Time
+  if before != "" { if t, err := time.Parse("2006-01-02", before); err == nil { beforePtr = &t } }
+  if after != "" { if t, err := time.Parse("2006-01-02", after); err == nil { afterPtr = &t } }
+
+  visible, err := svc.QueryTasks(context.Background(), service.Query{
+    ShowAll: showAll,
+    Grep:    grep,
+    SortKey: sortKey,
+    Tags:    tags,
+    Before:  beforePtr,
+    After:   afterPtr,
+  })
+  must(err)
+
+  // also fetch all tasks to compute dependency info
+  allTasks, err := svc.QueryTasks(context.Background(), service.Query{ShowAll: true, SortKey: sortKey})
+  must(err)
 
   if len(visible) == 0 {
     fmt.Println("(no tasks)")
@@ -175,7 +179,7 @@ func RunList(showAll, today, week, detailed bool, grep, tags, sortKey, before, a
     // Show dependencies
     if len(t.DependsOn) > 0 {
       fmt.Printf("    🔗 Depends on: %v\n", t.DependsOn)
-      if !core.AllDependenciesMet(tasks, t) {
+      if !core.AllDependenciesMet(allTasks, t) {
         fmt.Printf("    ⚠️  BLOCKED (dependencies not met)\n")
       }
     }
@@ -200,24 +204,15 @@ func RunDone(indexStr string) {
   idx, err := core.Atoi1(indexStr)
   must(err)
 
-  s := getStore()
-  tasks, err := store.LoadTasks[core.Task](s)
+  svc := getService()
+  visible, err := svc.QueryTasks(context.Background(), service.Query{ShowAll: false, SortKey: "due"})
   must(err)
-
-  visible := core.SortedWith(tasks, false, "", "due")
-
-  tasks, err = core.MarkDone(tasks, visible, idx)
+  if idx < 1 || idx > len(visible) { log.Fatal("Invalid index") }
+  updated, err := svc.MarkDone(context.Background(), visible, idx)
   must(err)
-
-  must(store.SaveTasks(s, tasks))
   fmt.Println("Marked done:", visible[idx-1].Title)
-
-  // Check if it was a recurring task
-  for _, t := range tasks {
-    if t.Title == visible[idx-1].Title && !t.IsDone() {
-      fmt.Printf("Created next occurrence (ID: %d)\n", t.ID)
-      break
-    }
+  if updated.Repeat != "" {
+    fmt.Println("Created next occurrence")
   }
 }
 
@@ -226,17 +221,12 @@ func RunRemove(indexStr string) {
   idx, err := core.Atoi1(indexStr)
   must(err)
 
-  s := getStore()
-  tasks, err := store.LoadTasks[core.Task](s)
+  svc := getService()
+  visible, err := svc.QueryTasks(context.Background(), service.Query{ShowAll: true, SortKey: "due"})
   must(err)
-
-  visible := core.SortedWith(tasks, true, "", "due")
-
+  if idx < 1 || idx > len(visible) { log.Fatal("Invalid index") }
   taskTitle := visible[idx-1].Title
-  tasks, err = core.Remove(tasks, visible, idx)
-  must(err)
-
-  must(store.SaveTasks(s, tasks))
+  must(svc.RemoveTask(context.Background(), visible, idx))
   fmt.Println("Removed:", taskTitle)
 }
 
@@ -245,107 +235,70 @@ func RunEdit(indexStr string, title, description, dueStr, repeat string, priorit
   idx, err := core.Atoi1(indexStr)
   must(err)
 
-  s := getStore()
-  tasks, err := store.LoadTasks[core.Task](s)
+  svc := getService()
+  visible, err := svc.QueryTasks(context.Background(), service.Query{ShowAll: true, SortKey: "due"})
   must(err)
-
-  visible := core.SortedWith(tasks, true, "", "due")
-
   if idx < 1 || idx > len(visible) {
     log.Fatalf("Invalid index: %d", idx)
   }
-
   targetID := visible[idx-1].ID
-  var targetTask *core.Task
 
-  for i := range tasks {
-    if tasks[i].ID == targetID {
-      targetTask = &tasks[i]
-      break
-    }
-  }
+  var titlePtr *string
+  if title != "" { titlePtr = &title }
 
-  if targetTask == nil {
-    log.Fatalf("Task %d not found", targetID)
-  }
-
-  // Update fields if provided
-  if title != "" {
-    targetTask.Title = title
-  }
-
+  var descPtr *string
   if description != "" {
-    if description == "none" {
-      targetTask.Description = ""
-    } else {
-      targetTask.Description = description
-    }
+    if description == "none" { empty := ""; descPtr = &empty } else { descPtr = &description }
   }
 
-  if dueStr != "" {
-    if dueStr == "none" {
-      targetTask.Due = nil
-    } else if t, err := time.Parse("2006-01-02", dueStr); err == nil {
-      targetTask.Due = &t
-    } else {
-      log.Fatalf("Invalid -due: %v", err)
-    }
-  }
+  var duePtr *string
+  if dueStr != "" { duePtr = &dueStr }
 
-  if repeat != "" {
-    if repeat == "none" {
-      targetTask.Repeat = ""
-    } else {
-      targetTask.Repeat = repeat
-    }
-  }
+  var prioPtr *int
+  if priority > 0 { prioPtr = &priority }
 
-  if priority > 0 {
-    if priority < 1 || priority > 3 {
-      priority = 1
-    }
-    targetTask.Priority = priority
-  }
-
+  var tagsPtr *[]string
   if tags != "" {
-    if tags == "none" {
-      targetTask.Tags = nil
-    } else {
-      targetTask.Tags = core.ParseTags(tags)
-    }
+    if tags == "none" { empty := []string{}; tagsPtr = &empty } else { v := core.ParseTags(tags); tagsPtr = &v }
   }
 
+  var depsPtr *[]int
   if after != "" {
-    if after == "none" {
-      targetTask.DependsOn = nil
-    } else {
-      targetTask.DependsOn = core.ParseIDs(after)
-    }
+    if after == "none" { empty := []int{}; depsPtr = &empty } else { v := core.ParseIDs(after); depsPtr = &v }
   }
 
-  must(store.SaveTasks(s, tasks))
-  fmt.Println("Updated:", targetTask.Title)
+  updated, err := svc.UpdateTask(context.Background(), targetID, service.UpdateTaskInput{
+    Title:       titlePtr,
+    Description: descPtr,
+    Due:         duePtr,
+    Priority:    prioPtr,
+    Tags:        tagsPtr,
+    Repeat:      func() *string { if repeat == "" { return nil }; if repeat == "none" { empty := ""; return &empty }; return &repeat }(),
+    DependsOn:   depsPtr,
+  })
+  must(err)
+  fmt.Println("Updated:", updated.Title)
 }
 
 // RunAlerts shows alerts for due/overdue tasks
 func RunAlerts(watch bool, interval, ahead time.Duration) {
-  s := getStore()
+  svc := getService()
   notifier := notifications.NewSystemNotifier(true)
   scanner := alerts.NewScanner(notifier)
 
   if watch {
     // Watch mode with continuous monitoring
     loadFunc := func() ([]core.Task, error) {
-      return store.LoadTasks[core.Task](s)
+      return svc.QueryTasks(context.Background(), service.Query{ShowAll: true, SortKey: "due"})
     }
 
-    tasks, err := store.LoadTasks[core.Task](s)
+    tasks, err := svc.QueryTasks(context.Background(), service.Query{ShowAll: true, SortKey: "due"})
     must(err)
 
     scanner.Watch(tasks, interval, ahead, loadFunc)
   } else {
     // One-time scan
-    tasks, err := store.LoadTasks[core.Task](s)
+    tasks, err := svc.QueryTasks(context.Background(), service.Query{ShowAll: true, SortKey: "due"})
     must(err)
 
     alertList := scanner.Scan(tasks, time.Now(), ahead)
@@ -371,10 +324,9 @@ func RunAlerts(watch bool, interval, ahead time.Duration) {
 
 // RunStats shows task statistics
 func RunStats() {
-  s := getStore()
-  tasks, err := store.LoadTasks[core.Task](s)
+  svc := getService()
+  tasks, err := svc.QueryTasks(context.Background(), service.Query{ShowAll: true, SortKey: "due"})
   must(err)
-
   fmt.Print(core.StatsReport(tasks, time.Now()))
 }
 
