@@ -2,6 +2,13 @@
 
 This folder contains all documentation for the godoit project.
 
+Key architectural highlights:
+
+- Storage uses a JSON file with cross-process file locking to prevent concurrent write conflicts.
+- A `TaskService` orchestrates all task operations; both CLI and HTTP server use it.
+- A `Clock` abstraction enables deterministic time in tests.
+- Domain helpers normalize priority and repeat rules.
+
 ## Available Documentation
 
 - **[QUICK_START.md](QUICK_START.md)** - Quick command reference and common workflows  
@@ -61,3 +68,4 @@ When adding features or making changes:
 2. Add entries to CHANGELOG.md
 3. Update examples if command syntax changes
 4. Keep emoji usage consistent with EMOJI_REFERENCE.md
+5. Reflect architectural changes (services, repositories, locking, clock) when applicable

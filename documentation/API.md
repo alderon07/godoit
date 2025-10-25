@@ -4,6 +4,12 @@
 
 The godoit HTTP API provides a RESTful interface for managing tasks. All endpoints return JSON responses.
 
+Implementation notes:
+
+- Handlers are backed by a `TaskService` abstraction that encapsulates business logic.
+- Storage is JSON-file based with cross-process file locking to prevent concurrent write conflicts.
+- Time-dependent operations use an injectable clock for deterministic behavior in tests.
+
 ## Base URL
 
 ```
