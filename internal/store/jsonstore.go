@@ -1,17 +1,22 @@
 package store
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
+
+	"github.com/gofrs/flock"
 )
 
 // JSONStore implements Store interface using JSON files
 type JSONStore struct {
 	filePath string
 	mu       sync.RWMutex
+    lock     *flock.Flock
 }
 
 // NewJSONStore creates a new JSON-based store
@@ -21,9 +26,10 @@ func NewJSONStore(filePath string) (*JSONStore, error) {
 		return nil, err
 	}
 
-	return &JSONStore{
-		filePath: filePath,
-	}, nil
+    return &JSONStore{
+        filePath: filePath,
+        lock:     flock.New(filePath + ".lock"),
+    }, nil
 }
 
 // Load reads data from the JSON file
@@ -57,8 +63,8 @@ func (s *JSONStore) Load() ([]byte, error) {
 
 // Save writes data to the JSON file atomically
 func (s *JSONStore) Save(data []byte) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+    s.mu.Lock()
+    defer s.mu.Unlock()
 
 	// Validate JSON before writing
 	var test interface{}
@@ -99,6 +105,30 @@ func (s *JSONStore) Save(data []byte) error {
 // Close implements Store interface (no-op for file-based storage)
 func (s *JSONStore) Close() error {
 	return nil
+}
+
+// WithExclusive acquires a cross-process exclusive lock for the duration of fn.
+func (s *JSONStore) WithExclusive(ctx context.Context, fn func() error) error {
+    // Try to acquire the file lock with retry/backoff honoring ctx
+    // Use a short poll interval to avoid busy waiting
+    ticker := time.NewTicker(50 * time.Millisecond)
+    defer ticker.Stop()
+    for {
+        locked, err := s.lock.TryLock()
+        if err != nil {
+            return err
+        }
+        if locked {
+            break
+        }
+        select {
+        case <-ctx.Done():
+            return ctx.Err()
+        case <-ticker.C:
+        }
+    }
+    defer s.lock.Unlock()
+    return fn()
 }
 
 // LoadTasks is a helper to load and unmarshal tasks

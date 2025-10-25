@@ -12,31 +12,40 @@ import (
 	"strings"
 	"time"
 
+	"godoit/internal/clock"
 	"godoit/internal/core"
+	"godoit/internal/repository"
+	"godoit/internal/service"
 	"godoit/internal/store"
 )
 
 // Server represents the HTTP API server
 type Server struct {
-	store  *store.JSONStore
+    store  *store.JSONStore
 	mux    *http.ServeMux
 	server *http.Server
+    svc    *service.TaskService
 }
 
 // NewServer creates a new HTTP server
 func NewServer(host string, port int, s *store.JSONStore) *Server {
 	mux := http.NewServeMux()
 
-	srv := &Server{
-		store: s,
-		mux:   mux,
-		server: &http.Server{
+    // wire repository and service
+    repo := repository.NewJSONTaskRepository(s)
+	svc := service.NewTaskService(repo, clock.SystemClock{})
+
+    srv := &Server{
+        store: s,
+        mux:   mux,
+        server: &http.Server{
 			Addr:         fmt.Sprintf("%s:%d", host, port),
 			Handler:      mux,
 			ReadTimeout:  15 * time.Second,
 			WriteTimeout: 15 * time.Second,
 			IdleTimeout:  60 * time.Second,
 		},
+        svc: svc,
 	}
 
 	srv.setupRoutes()
@@ -140,44 +149,32 @@ func (s *Server) handleTask(w http.ResponseWriter, r *http.Request) {
 
 // listTasks returns all tasks with optional filtering
 func (s *Server) listTasks(w http.ResponseWriter, r *http.Request) {
-	tasks, err := store.LoadTasks[core.Task](s.store)
+	q := r.URL.Query()
+	showAll := q.Get("all") == "true"
+	grep := q.Get("grep")
+	tags := q.Get("tags")
+	sortKey := q.Get("sort")
+	if sortKey == "" { sortKey = "due" }
+	var beforePtr, afterPtr *time.Time
+	if bs := q.Get("before"); bs != "" {
+		if t, err := time.Parse("2006-01-02", bs); err == nil { beforePtr = &t }
+	}
+	if as := q.Get("after"); as != "" {
+		if t, err := time.Parse("2006-01-02", as); err == nil { afterPtr = &t }
+	}
+	result, err := s.svc.QueryTasks(r.Context(), service.Query{
+		ShowAll: showAll,
+		Grep:    grep,
+		SortKey: sortKey,
+		Tags:    tags,
+		Before:  beforePtr,
+		After:   afterPtr,
+	})
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
-	// Apply filters from query params
-	query := r.URL.Query()
-
-	// Filter by status
-	showAll := query.Get("all") == "true"
-	tasks = core.FilterByStatus(tasks, showAll)
-
-	// Search
-	if grep := query.Get("grep"); grep != "" {
-		tasks = core.SearchTasks(tasks, grep)
-	}
-
-	// Filter by tags
-	if tags := query.Get("tags"); tags != "" {
-		tasks = core.FilterByTags(tasks, tags)
-	}
-
-	// Filter by date
-	before := query.Get("before")
-	after := query.Get("after")
-	if before != "" || after != "" {
-		tasks = core.FilterByDate(tasks, before, after)
-	}
-
-	// Sort
-	sortKey := query.Get("sort")
-	if sortKey == "" {
-		sortKey = "due"
-	}
-	core.SortTasks(tasks, core.SortKey(sortKey))
-
-	respondJSON(w, tasks)
+	respondJSON(w, result)
 }
 
 // createTask creates a new task
@@ -197,75 +194,41 @@ func (s *Server) createTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if input.Title == "" {
-		http.Error(w, "Title is required", http.StatusBadRequest)
-		return
-	}
-
-	tasks, err := store.LoadTasks[core.Task](s.store)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
 	var due *time.Time
 	if input.Due != nil && *input.Due != "" {
-		t, err := time.Parse("2006-01-02", *input.Due)
-		if err != nil {
+		if t, err := time.Parse("2006-01-02", *input.Due); err == nil { due = &t } else {
 			http.Error(w, "Invalid date format", http.StatusBadRequest)
 			return
 		}
-		due = &t
 	}
-
-	tasks = core.Add(tasks, input.Title, due)
-	newTask := &tasks[len(tasks)-1]
-
-	newTask.Description = input.Description
-	newTask.Priority = input.Priority
-	newTask.Tags = input.Tags
-	newTask.Repeat = input.Repeat
-	newTask.DependsOn = input.DependsOn
-
-	if err := store.SaveTasks(s.store, tasks); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	created, err := s.svc.AddTask(r.Context(), service.AddTaskInput{
+		Title:       input.Title,
+		Description: input.Description,
+		Due:         due,
+		Priority:    input.Priority,
+		Tags:        input.Tags,
+		Repeat:      input.Repeat,
+		DependsOn:   input.DependsOn,
+	})
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-
-	respondJSON(w, newTask)
+	respondJSON(w, created)
 }
 
 // getTask returns a single task by ID
 func (s *Server) getTask(w http.ResponseWriter, r *http.Request, id int) {
-	tasks, err := store.LoadTasks[core.Task](s.store)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	task, err := core.GetByID(tasks, id)
+	task, err := s.svc.GetTask(r.Context(), id)
 	if err != nil {
 		http.Error(w, "Task not found", http.StatusNotFound)
 		return
 	}
-
 	respondJSON(w, task)
 }
 
 // updateTask updates an existing task
 func (s *Server) updateTask(w http.ResponseWriter, r *http.Request, id int) {
-	tasks, err := store.LoadTasks[core.Task](s.store)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	task, err := core.GetByID(tasks, id)
-	if err != nil {
-		http.Error(w, "Task not found", http.StatusNotFound)
-		return
-	}
-
 	var input struct {
 		Title       *string   `json:"title"`
 		Description *string   `json:"description"`
@@ -281,130 +244,43 @@ func (s *Server) updateTask(w http.ResponseWriter, r *http.Request, id int) {
 		return
 	}
 
-	// Update fields if provided
-	if input.Title != nil {
-		task.Title = *input.Title
-	}
-	if input.Description != nil {
-		task.Description = *input.Description
-	}
-	if input.Due != nil {
-		if *input.Due == "" {
-			task.Due = nil
-		} else {
-			t, err := time.Parse("2006-01-02", *input.Due)
-			if err != nil {
-				http.Error(w, "Invalid date format", http.StatusBadRequest)
-				return
-			}
-			task.Due = &t
-		}
-	}
-	if input.Priority != nil {
-		task.Priority = *input.Priority
-	}
-	if input.Tags != nil {
-		task.Tags = *input.Tags
-	}
-	if input.Repeat != nil {
-		task.Repeat = *input.Repeat
-	}
-	if input.DependsOn != nil {
-		task.DependsOn = *input.DependsOn
-	}
-
-	tasks, err = core.Update(tasks, *task)
+	updated, err := s.svc.UpdateTask(r.Context(), id, service.UpdateTaskInput{
+		Title:       input.Title,
+		Description: input.Description,
+		Due:         input.Due,
+		Priority:    input.Priority,
+		Tags:        input.Tags,
+		Repeat:      input.Repeat,
+		DependsOn:   input.DependsOn,
+	})
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-
-	if err := store.SaveTasks(s.store, tasks); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	respondJSON(w, task)
+	respondJSON(w, updated)
 }
 
 // deleteTask deletes a task by ID
 func (s *Server) deleteTask(w http.ResponseWriter, r *http.Request, id int) {
-	tasks, err := store.LoadTasks[core.Task](s.store)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	// Find the task in all tasks
-	found := false
-	newTasks := make([]core.Task, 0, len(tasks)-1)
-
-	for _, t := range tasks {
-		if t.ID == id {
-			found = true
-			continue
+	if err := s.svc.DeleteTaskByID(r.Context(), id); err != nil {
+		if err.Error() == "task not found" {
+			http.Error(w, "Task not found", http.StatusNotFound)
+			return
 		}
-		newTasks = append(newTasks, t)
-	}
-
-	if !found {
-		http.Error(w, "Task not found", http.StatusNotFound)
-		return
-	}
-
-	if err := store.SaveTasks(s.store, newTasks); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
 	w.WriteHeader(http.StatusNoContent)
 }
 
 // markDone marks a task as complete
 func (s *Server) markDone(w http.ResponseWriter, r *http.Request, id int) {
-	tasks, err := store.LoadTasks[core.Task](s.store)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	// Find task index
-	taskIdx := -1
-	for i, t := range tasks {
-		if t.ID == id {
-			taskIdx = i
-			break
-		}
-	}
-
-	if taskIdx == -1 {
-		http.Error(w, "Task not found", http.StatusNotFound)
-		return
-	}
-
-	// Create a visible list with just this task
-	visible := []core.Task{tasks[taskIdx]}
-
-	tasks, err = core.MarkDone(tasks, visible, 1)
+	updated, err := s.svc.MarkDoneByID(r.Context(), id)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-
-	if err := store.SaveTasks(s.store, tasks); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	// Find and return the updated task
-	for _, t := range tasks {
-		if t.ID == id {
-			respondJSON(w, t)
-			return
-		}
-	}
-
-	w.WriteHeader(http.StatusOK)
+	respondJSON(w, updated)
 }
 
 // handleStats returns task statistics
@@ -414,7 +290,7 @@ func (s *Server) handleStats(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tasks, err := store.LoadTasks[core.Task](s.store)
+	tasks, err := s.svc.QueryTasks(r.Context(), service.Query{ShowAll: true, SortKey: "due"})
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

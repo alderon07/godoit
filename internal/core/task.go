@@ -14,10 +14,44 @@ type Task struct {
 	Due         *time.Time `json:"due,omitempty"`
 	DoneAt      *time.Time `json:"done_at,omitempty"`
 	CreatedAt   time.Time  `json:"created_at"`
-	Priority    int        `json:"priority"` // 1=low, 2=medium, 3=high
+    Priority    int        `json:"priority"` // 1=low, 2=medium, 3=high
 	Tags        []string   `json:"tags,omitempty"`
-	Repeat      string     `json:"repeat,omitempty"` // daily, weekly, monthly
+    Repeat      string     `json:"repeat,omitempty"` // daily, weekly, monthly
 	DependsOn   []int      `json:"depends_on,omitempty"`
+}
+
+// Domain enums (typed aliases) and normalizers
+type Priority int
+
+const (
+    PriorityLow Priority = 1
+    PriorityMedium Priority = 2
+    PriorityHigh Priority = 3
+)
+
+func NormalizePriority(p int) int {
+    if p < int(PriorityLow) || p > int(PriorityHigh) { return int(PriorityLow) }
+    return p
+}
+
+type RepeatRule string
+
+const (
+    RepeatDaily   RepeatRule = "daily"
+    RepeatWeekly  RepeatRule = "weekly"
+    RepeatMonthly RepeatRule = "monthly"
+)
+
+func NormalizeRepeat(r string) string {
+    lr := strings.ToLower(strings.TrimSpace(r))
+    switch lr {
+    case string(RepeatDaily), string(RepeatWeekly), string(RepeatMonthly):
+        return lr
+    case "", "none":
+        return ""
+    default:
+        return lr // keep unknowns as-is to avoid destructive changes
+    }
 }
 
 // IsDone returns true if the task is completed
@@ -55,6 +89,11 @@ func (t *Task) HasTag(tag string) bool {
 
 // Add creates a new task with the given title and returns the updated task list
 func Add(tasks []Task, title string, due *time.Time) []Task {
+    return AddAt(tasks, title, due, time.Now())
+}
+
+// AddAt is like Add but uses the provided timestamp for CreatedAt (for testability)
+func AddAt(tasks []Task, title string, due *time.Time, now time.Time) []Task {
 	nextID := 1
 	for _, t := range tasks {
 		if t.ID >= nextID {
@@ -62,11 +101,11 @@ func Add(tasks []Task, title string, due *time.Time) []Task {
 		}
 	}
 
-	task := Task{
+    task := Task{
 		ID:        nextID,
 		Title:     title,
 		Due:       due,
-		CreatedAt: time.Now(),
+        CreatedAt: now,
 		Priority:  1, // default to low priority
 	}
 
@@ -121,39 +160,43 @@ func Remove(tasks []Task, visible []Task, idx int) ([]Task, error) {
 
 // MarkDone marks a task as complete, handling recurring tasks
 func MarkDone(tasks []Task, visible []Task, idx int) ([]Task, error) {
-	if idx < 1 || idx > len(visible) {
-		return tasks, fmt.Errorf("invalid index: %d", idx)
-	}
+    return MarkDoneAt(tasks, visible, idx, time.Now())
+}
 
-	targetID := visible[idx-1].ID
-	now := time.Now()
+// MarkDoneAt is like MarkDone but uses the provided time (for testability)
+func MarkDoneAt(tasks []Task, visible []Task, idx int, now time.Time) ([]Task, error) {
+    if idx < 1 || idx > len(visible) {
+        return tasks, fmt.Errorf("invalid index: %d", idx)
+    }
 
-	for i := range tasks {
-		if tasks[i].ID == targetID {
-			if tasks[i].IsDone() {
-				return tasks, fmt.Errorf("task already completed")
-			}
+    targetID := visible[idx-1].ID
 
-			// Check dependencies
-			if !AllDependenciesMet(tasks, tasks[i]) {
-				return tasks, fmt.Errorf("cannot complete task: dependencies not met")
-			}
+    for i := range tasks {
+        if tasks[i].ID == targetID {
+            if tasks[i].IsDone() {
+                return tasks, fmt.Errorf("task already completed")
+            }
 
-			tasks[i].DoneAt = &now
+            // Check dependencies
+            if !AllDependenciesMet(tasks, tasks[i]) {
+                return tasks, fmt.Errorf("cannot complete task: dependencies not met")
+            }
 
-			// Handle recurring tasks
-			if tasks[i].Repeat != "" {
-				nextTask := createNextRecurrence(tasks[i])
-				if nextTask != nil {
-					tasks = append(tasks, *nextTask)
-				}
-			}
+            tasks[i].DoneAt = &now
 
-			return tasks, nil
-		}
-	}
+            // Handle recurring tasks
+            if tasks[i].Repeat != "" {
+                nextTask := createNextRecurrenceAt(tasks[i], now)
+                if nextTask != nil {
+                    tasks = append(tasks, *nextTask)
+                }
+            }
 
-	return tasks, fmt.Errorf("task %d not found", targetID)
+            return tasks, nil
+        }
+    }
+
+    return tasks, fmt.Errorf("task %d not found", targetID)
 }
 
 // AllDependenciesMet returns true if all dependencies are completed
@@ -169,6 +212,11 @@ func AllDependenciesMet(tasks []Task, task Task) bool {
 
 // createNextRecurrence creates the next occurrence of a recurring task
 func createNextRecurrence(task Task) *Task {
+    return createNextRecurrenceAt(task, time.Now())
+}
+
+// createNextRecurrenceAt is like createNextRecurrence but uses the provided time
+func createNextRecurrenceAt(task Task, now time.Time) *Task {
 	if task.Due == nil {
 		return nil
 	}
@@ -181,12 +229,12 @@ func createNextRecurrence(task Task) *Task {
 	// Find the highest ID
 	nextID := task.ID + 1
 
-	nextTask := Task{
+    nextTask := Task{
 		ID:          nextID,
 		Title:       task.Title,
 		Description: task.Description,
 		Due:         nextDue,
-		CreatedAt:   time.Now(),
+        CreatedAt:   now,
 		Priority:    task.Priority,
 		Tags:        append([]string{}, task.Tags...),
 		Repeat:      task.Repeat,
