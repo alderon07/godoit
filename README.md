@@ -706,6 +706,7 @@ This README provides an overview and quick start guide. For more detailed inform
 - **[Contributing Guide](documentation/CONTRIBUTING.md)** - How to contribute to the project
 - **[Emoji Reference](documentation/EMOJI_REFERENCE.md)** - Emoji meanings and usage guidelines
 - **[Changelog](documentation/CHANGELOG.md)** - Version history and changes
+- **[Architecture](documentation/ARCHITECTURE.md)** - High-level components and data flow
 
 ## Support
 
