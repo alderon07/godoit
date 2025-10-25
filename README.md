@@ -1,4 +1,4 @@
-# godo
+# godoit
 
 A feature-rich, cross-platform command-line TODO list manager written in Go with support for alerts, recurring tasks, priorities, filtering, search, tagging, task dependencies, analytics, and an HTTP REST API.
 
