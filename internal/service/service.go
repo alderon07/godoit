@@ -55,7 +55,9 @@ func (s *TaskService) AddTask(ctx context.Context, in AddTaskInput) (core.Task, 
     tasks, err := s.repo.LoadTasks(ctx)
     if err != nil { return core.Task{}, err }
 
-    tasks = core.Add(tasks, in.Title, in.Due)
+    // use injected clock for deterministic CreatedAt
+    now := s.clock.Now()
+    tasks = core.AddAt(tasks, in.Title, in.Due, now)
     t := &tasks[len(tasks)-1]
     t.Description = in.Description
     t.Priority = core.NormalizePriority(in.Priority)
@@ -103,7 +105,8 @@ func (s *TaskService) MarkDone(ctx context.Context, visible []core.Task, idx int
     tasks, err := s.repo.LoadTasks(ctx)
     if err != nil { return core.Task{}, err }
     before := tasks
-    tasks, err = core.MarkDone(tasks, visible, idx)
+    // use injected clock for deterministic DoneAt and recurrence
+    tasks, err = core.MarkDoneAt(tasks, visible, 1, s.clock.Now())
     if err != nil { return core.Task{}, err }
     if err := s.repo.SaveTasks(ctx, tasks); err != nil { return core.Task{}, err }
     // Return the updated task (visible[idx-1] maps by ID)
