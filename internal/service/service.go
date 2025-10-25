@@ -58,9 +58,9 @@ func (s *TaskService) AddTask(ctx context.Context, in AddTaskInput) (core.Task, 
     tasks = core.Add(tasks, in.Title, in.Due)
     t := &tasks[len(tasks)-1]
     t.Description = in.Description
-    if in.Priority >= 1 && in.Priority <= 3 { t.Priority = in.Priority }
+    t.Priority = core.NormalizePriority(in.Priority)
     t.Tags = in.Tags
-    t.Repeat = in.Repeat
+    t.Repeat = core.NormalizeRepeat(in.Repeat)
     t.DependsOn = in.DependsOn
 
     if err := s.repo.SaveTasks(ctx, tasks); err != nil { return core.Task{}, err }
@@ -79,10 +79,10 @@ func (s *TaskService) UpdateTask(ctx context.Context, id int, in UpdateTaskInput
         if *in.Due == "" { task.Due = nil } else if t, err := time.Parse("2006-01-02", *in.Due); err == nil { task.Due = &t } else { return core.Task{}, fmt.Errorf("invalid due date") }
     }
     if in.Priority != nil {
-        if *in.Priority >= 1 && *in.Priority <= 3 { task.Priority = *in.Priority }
+        task.Priority = core.NormalizePriority(*in.Priority)
     }
     if in.Tags != nil { task.Tags = *in.Tags }
-    if in.Repeat != nil { task.Repeat = *in.Repeat }
+    if in.Repeat != nil { task.Repeat = core.NormalizeRepeat(*in.Repeat) }
     if in.DependsOn != nil { task.DependsOn = *in.DependsOn }
 
     tasks, err = core.Update(tasks, *task)

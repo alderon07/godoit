@@ -35,12 +35,12 @@ func (r *JSONTaskRepository) LoadTasks(_ context.Context) ([]core.Task, error) {
     return tasks, nil
 }
 
-func (r *JSONTaskRepository) SaveTasks(_ context.Context, tasks []core.Task) error {
+func (r *JSONTaskRepository) SaveTasks(ctx context.Context, tasks []core.Task) error {
     data, err := json.Marshal(tasks)
     if err != nil {
         return err
     }
-    return r.store.Save(data)
+    return r.store.WithExclusive(ctx, func() error { return r.store.Save(data) })
 }
 
 

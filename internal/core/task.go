@@ -14,10 +14,44 @@ type Task struct {
 	Due         *time.Time `json:"due,omitempty"`
 	DoneAt      *time.Time `json:"done_at,omitempty"`
 	CreatedAt   time.Time  `json:"created_at"`
-	Priority    int        `json:"priority"` // 1=low, 2=medium, 3=high
+    Priority    int        `json:"priority"` // 1=low, 2=medium, 3=high
 	Tags        []string   `json:"tags,omitempty"`
-	Repeat      string     `json:"repeat,omitempty"` // daily, weekly, monthly
+    Repeat      string     `json:"repeat,omitempty"` // daily, weekly, monthly
 	DependsOn   []int      `json:"depends_on,omitempty"`
+}
+
+// Domain enums (typed aliases) and normalizers
+type Priority int
+
+const (
+    PriorityLow Priority = 1
+    PriorityMedium Priority = 2
+    PriorityHigh Priority = 3
+)
+
+func NormalizePriority(p int) int {
+    if p < int(PriorityLow) || p > int(PriorityHigh) { return int(PriorityLow) }
+    return p
+}
+
+type RepeatRule string
+
+const (
+    RepeatDaily   RepeatRule = "daily"
+    RepeatWeekly  RepeatRule = "weekly"
+    RepeatMonthly RepeatRule = "monthly"
+)
+
+func NormalizeRepeat(r string) string {
+    lr := strings.ToLower(strings.TrimSpace(r))
+    switch lr {
+    case string(RepeatDaily), string(RepeatWeekly), string(RepeatMonthly):
+        return lr
+    case "", "none":
+        return ""
+    default:
+        return lr // keep unknowns as-is to avoid destructive changes
+    }
 }
 
 // IsDone returns true if the task is completed
@@ -62,7 +96,7 @@ func Add(tasks []Task, title string, due *time.Time) []Task {
 		}
 	}
 
-	task := Task{
+    task := Task{
 		ID:        nextID,
 		Title:     title,
 		Due:       due,
@@ -126,7 +160,7 @@ func MarkDone(tasks []Task, visible []Task, idx int) ([]Task, error) {
 	}
 
 	targetID := visible[idx-1].ID
-	now := time.Now()
+    now := time.Now()
 
 	for i := range tasks {
 		if tasks[i].ID == targetID {
@@ -142,7 +176,7 @@ func MarkDone(tasks []Task, visible []Task, idx int) ([]Task, error) {
 			tasks[i].DoneAt = &now
 
 			// Handle recurring tasks
-			if tasks[i].Repeat != "" {
+            if tasks[i].Repeat != "" {
 				nextTask := createNextRecurrence(tasks[i])
 				if nextTask != nil {
 					tasks = append(tasks, *nextTask)
