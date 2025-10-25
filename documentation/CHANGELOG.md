@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Service layer (`internal/service`) and repository (`internal/repository`) abstractions; CLI and HTTP use the service.
+- Cross-process file locking for JSON store to prevent concurrent write conflicts.
+- Clock abstraction for deterministic time in tests.
+- Domain normalizers for priority and repeat.
 - Task descriptions with `-desc` flag for adding context to tasks
 - Today view with `-today` flag to show only today's tasks
 - Week view with `-week` flag to show this week's tasks
@@ -25,6 +29,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- HTTP handlers refactored to call `TaskService` rather than manipulating storage directly.
+- CLI commands refactored to use `TaskService` for add/list/edit/remove/done.
 - List view now shows richer information with color-coded priorities
 - Task display format improved with better visual hierarchy
 - Documentation updated with comprehensive examples

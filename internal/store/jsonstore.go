@@ -16,7 +16,7 @@ import (
 type JSONStore struct {
 	filePath string
 	mu       sync.RWMutex
-    lock     *flock.Flock
+  lock     *flock.Flock
 }
 
 // NewJSONStore creates a new JSON-based store

@@ -147,6 +147,12 @@ func CalculateStats(tasks []Task, now time.Time) Stats {
 - Use table-driven tests when appropriate
 - Test both success and error cases
 - Aim for good coverage
+ 
+### Service and repository testing tips
+
+- Use fake repositories to unit test `TaskService` without disk I/O.
+- Inject a fake `Clock` to assert CreatedAt/DoneAt deterministically.
+- For concurrency, spin up two goroutines calling service methods; JSON store uses a `.lock` file to serialize writes.
 
 Example:
 
@@ -208,11 +214,15 @@ func TestTaskHasTag(t *testing.T) {
 godoit/
 ├── cmd/todo/           # Main application
 ├── internal/           # Internal packages
-│   ├── core/          # Core logic
-│   ├── store/         # Storage layer
-│   ├── alerts/        # Alert system
-│   ├── notifications/ # Notifications
-│   └── server/        # HTTP server
+│   ├── core/           # Core domain (task, filters, stats)
+│   ├── store/          # Storage primitives (JSON store + paths)
+│   ├── repository/     # TaskRepository (wraps store)
+│   ├── service/        # TaskService (business logic used by CLI/HTTP)
+│   ├── alerts/         # Alert system
+│   ├── notifications/  # Notifications
+│   ├── server/         # HTTP server (handlers built on TaskService)
+│   ├── clock/          # Clock abstraction for testable time
+│   └── app/            # App constants
 ├── documentation/     # All documentation files
 │   ├── API.md
 │   ├── CHANGELOG.md
