@@ -17,12 +17,6 @@ import (
 	"godoit/internal/store"
 )
 
-const (
-  GetItDoneNow  = 3
-  IGotTime      = 2
-  WeAreChilling = 1
-)
-
 // Helper for consistent error handling
 func must(err error) {
   if err != nil {
@@ -143,6 +137,7 @@ func RunList(showAll, today, week, detailed bool, grep, tags, sortKey, before, a
       priorityStr = "🟢"
     }
 
+    fmt.Print(strings.Repeat("=", 50), "\n")
     fmt.Printf("\n%2d. [%s] %s %s\n", i+1, status, priorityStr, t.Title)
 
     // Show description if present
@@ -195,7 +190,7 @@ func RunList(showAll, today, week, detailed bool, grep, tags, sortKey, before, a
     }
   }
 
-  fmt.Print("\n" + strings.Repeat("-", 50) + "\n")
+  fmt.Print("\n" + strings.Repeat("=", 50) + "\n")
   fmt.Printf("Total: %d task(s)\n", len(visible))
 }
 
