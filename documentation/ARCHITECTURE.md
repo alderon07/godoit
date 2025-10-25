@@ -92,47 +92,52 @@ This document summarizes the system architecture, key components, and data flow 
 <summary>Click to view interactive Mermaid diagram (requires Mermaid support)</summary>
 
 ```mermaid
-flowchart LR
-  subgraph CLI
-    A[cmd/todo (CLI)]
-  end
-  subgraph HTTP
-    B[internal/server (HTTP REST API)]
-  end
-  subgraph Service
-    S[service.TaskService]
-    CLK[[clock.Clock]]
-  end
-  subgraph Persistence
-    R[[repository.TaskRepository]]
-    RJ[repository.JSONTaskRepository]
-    ST[[store.Store]]
-    JS[store.JSONStore]
-    F[(~/.local/share/godoit/tasks.json)]
-    L[(tasks.json.lock)]
-  end
-  subgraph Domain
-    C[core (Task, filters, sort, stats)]
-  end
-  subgraph Alerts
-    AL[alerts.Scanner]
-    NIF[[notifications.Notifier]]
-    NS[notifications.SystemNotifier]
-  end
-
-  A --> S
-  B --> S
-  S --> C
-  S --> R
-  S -. uses .-> CLK
-  R <|..| RJ
-  R --> ST
-  ST <|..| JS
-  JS --> F
-  JS -. file lock .-> L
-  AL --> C
-  AL -. notify .-> NIF
-  NS -. implements .-> NIF
+graph TB
+    subgraph Entry["Entry Points"]
+        CLI["cmd/todo<br/>(CLI)"]
+        HTTP["internal/server<br/>(HTTP REST API)"]
+    end
+    
+    subgraph Service["Service Layer"]
+        SVC["service.TaskService"]
+        CLK["clock.Clock"]
+    end
+    
+    subgraph Domain["Domain Logic"]
+        CORE["internal/core<br/>Task, filters, sort, stats"]
+    end
+    
+    subgraph Persistence["Persistence Layer"]
+        REPO_IF["TaskRepository<br/>(interface)"]
+        REPO["JSONTaskRepository"]
+    end
+    
+    subgraph Storage["Storage Layer"]
+        STORE_IF["Store<br/>(interface)"]
+        STORE["JSONStore<br/>atomic writes + flock"]
+        FILE["tasks.json"]
+        LOCK["tasks.json.lock"]
+    end
+    
+    subgraph Alerts["Alerts & Notifications"]
+        SCANNER["alerts.Scanner"]
+        NOTIF_IF["Notifier<br/>(interface)"]
+        NOTIF["SystemNotifier"]
+    end
+    
+    CLI --> SVC
+    HTTP --> SVC
+    SVC --> CORE
+    SVC --> REPO_IF
+    SVC -.uses.-> CLK
+    REPO_IF -.implemented by.-> REPO
+    REPO --> STORE_IF
+    STORE_IF -.implemented by.-> STORE
+    STORE --> FILE
+    STORE -.locks.-> LOCK
+    SCANNER --> CORE
+    SCANNER --> NOTIF_IF
+    NOTIF_IF -.implemented by.-> NOTIF
 ```
 </details>
 
